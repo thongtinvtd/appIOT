@@ -1,37 +1,41 @@
-import React, {useState, useEffect} from 'react';
-import {View, Text} from 'react-native';
+import React, {useEffect, useState} from 'react';
 import auth from '@react-native-firebase/auth';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import Authentication from './screens/Authentication';
+import Authenticated from './screens/Authenticated';
 
-function App() {
-  // Set an initializing state while Firebase connects
-  const [initializing, setInitializing] = useState(true);
-  const [user, setUser] = useState();
-
-  // Handle user state changes
-  function onAuthStateChanged(user) {
-    setUser(user);
-    if (initializing) setInitializing(false);
-  }
+export default function App() {
+  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-    return subscriber; // unsubscribe on unmount
+    GoogleSignin.configure({
+      webClientId:
+        '738447097435-n7crig6r55r1531a4ughvo4ah3ppu1jl.apps.googleusercontent.com',
+    });
   }, []);
 
-  if (initializing) return null;
+  async function onGoogleButtonPress() {
+    // Get the users ID token
+    const {idToken} = await GoogleSignin.signIn();
 
-  if (!user) {
-    return (
-      <View>
-        <Text>Login</Text>
-      </View>
-    );
+    // Create a Google credential with the token
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+    // Sign-in the user with the credential
+    return auth().signInWithCredential(googleCredential);
   }
 
-  return (
-    <View>
-      <Text>Welcome {user.email}</Text>
-    </View>
-  );
+  auth().onAuthStateChanged(user => {
+    if (user) {
+      setAuthenticated(true);
+    } else {
+      setAuthenticated(false);
+    }
+  });
+
+  if (authenticated) {
+    return <Authenticated />;
+  }
+
+  return <Authentication onGoogleButtonPress={onGoogleButtonPress} />;
 }
-export default App;
